@@ -17,6 +17,8 @@ def requires_professional_care(question: str) -> bool:
         r"\b(?:how|what)\s+(?:should|do|can)\s+(?:i|we)\b.{0,80}\b(?:manage|treat|care|give|administer|do)\b",
         r"\bhow\s+(?:to|do\s+you)\s+(?:manage|treat|care for|administer|give)\b",
         r"\b(?:dose|doses|dosing|dosage|prescribe|prescribing|how much|infusion rate|fluid rate|iv access)\b",
+        r"\b(?:guidance|recommendations?|protocol|instructions?)\b.{0,100}\b(?:assess\w*|diagnos\w*|test\w*|treat\w*|manag\w*)\b.{0,100}\b(?:suspect\w*|probable|confirmed|patient|case)\b",
+        r"\b(?:assess\w*|diagnos\w*|test\w*|treat\w*|manag\w*)\b.{0,100}\b(?:suspect\w*|probable|confirmed)\s+(?:ebola|marburg|case|patient)\b",
         r"\b(?:my|our)\s+(?:child|patient|relative|family member)\b",
         r"\bi\s+(?:have|am experiencing|think i have)\b.{0,80}\b(?:ebola|fever|bleeding|vomiting|diarrhoea|diarrhea)\b",
     )

@@ -6,8 +6,15 @@ import sys
 import time
 from dataclasses import dataclass
 
-from bounded_composer import REFUSAL, compose_answer, repair_citations
+from bounded_composer import (
+    REFUSAL,
+    compose_answer,
+    normalize_generated_text,
+    repair_citations,
+    verify_claim_support,
+)
 from conversation import clarification_for, contextualize_question
+from public_safety import CARE_REDIRECT, requires_professional_care
 from rag_pipeline import exclude_bibliography, rerank_and_release
 from retrievers import DEFAULT_SOURCE, GuidelineRetriever
 from vector_store import VectorStore
@@ -38,6 +45,9 @@ class SimpleAssistantRAG:
         if not request.question.strip():
             raise ValueError("Question must not be empty.")
         started = time.perf_counter()
+        if requires_professional_care(request.question):
+            return {"answer": CARE_REDIRECT, "issues": [], "chunks": [],
+                    "elapsed_seconds": round(time.perf_counter() - started, 2)}
         clarification = clarification_for(request.question, request.earlier_questions)
         if clarification:
             return {"answer": clarification, "issues": [], "chunks": [],
@@ -56,13 +66,25 @@ class SimpleAssistantRAG:
         if selected["release"] == "refusal":
             return {"answer": REFUSAL, "issues": [], "chunks": evidence,
                     "elapsed_seconds": round(time.perf_counter() - started, 2)}
-        answer = compose_answer(search_question, evidence, request.ollama_model)
+        answer = normalize_generated_text(
+            compose_answer(search_question, evidence, request.ollama_model)
+        )
         checked = verify_answer(answer, evidence)
         if checked["issues"]:
-            answer = repair_citations(search_question, answer, evidence, request.ollama_model)
+            answer = normalize_generated_text(
+                repair_citations(search_question, answer, evidence, request.ollama_model)
+            )
             checked = verify_answer(answer, evidence)
-        return {"answer": checked["verified_answer"], "issues": checked["issues"],
-                "chunks": evidence, "elapsed_seconds": round(time.perf_counter() - started, 2)}
+        issues = list(checked["issues"])
+        if not issues and checked["verified_answer"] != REFUSAL:
+            supported, reason = verify_claim_support(
+                checked["verified_answer"], evidence, request.ollama_model
+            )
+            if not supported:
+                issues.append(reason)
+        final_answer = REFUSAL if issues else checked["verified_answer"]
+        return {"answer": final_answer, "issues": issues,
+                "chunks": evidence if not issues else [], "elapsed_seconds": round(time.perf_counter() - started, 2)}
 
 
 def main() -> None:

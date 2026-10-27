@@ -25,4 +25,9 @@ def verify_answer(answer: str, evidence: list[dict]) -> dict:
         for line in answer.splitlines()
     ):
         issues.append("Every answer bullet needs a document and PDF page citation.")
+    lines = [line.strip() for line in answer.splitlines() if line.strip()]
+    if not lines or any(not line.startswith("- ") for line in lines):
+        issues.append("The answer must use one plain-text bullet per claim.")
+    if any(not END_CITATION_RE.search(line) for line in lines):
+        issues.append("Every claim must end with its document and PDF page citation.")
     return {"verified_answer": answer if not issues else REFUSAL, "issues": issues}
