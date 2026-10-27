@@ -1,0 +1,10 @@
+.git
+.env
+.venv
+__pycache__
+*.pyc
+*.pdf
+chroma_db
+who_guidelines
+tests
+scripts

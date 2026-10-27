@@ -4,6 +4,7 @@ import pytest
 
 import simple_rag
 import model_warmup
+from public_safety import requires_professional_care
 from bounded_composer import REFUSAL
 from rag_pipeline import (
     is_general_management_question,
@@ -36,6 +37,25 @@ def test_warmup_loads_embedding_then_chat_model(monkeypatch):
     assert [name for name, _ in calls] == ["embed", "generate"]
     assert calls[1][1]["prompt"] == ""
     assert all(args["keep_alive"] == model_warmup.KEEP_ALIVE for _, args in calls)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "How should I manage an Ebola patient?",
+        "How to administer mAb114?",
+        "What dose of medicine should I use?",
+        "What does the guideline say about IV fluid dosing?",
+        "My child has fever after travel.",
+        "I have fever and think I have Ebola.",
+    ],
+)
+def test_public_care_requests_are_redirected(question):
+    assert requires_professional_care(question)
+
+
+def test_general_document_question_is_available_to_public():
+    assert not requires_professional_care("What topics does the guideline cover?")
 
 
 def test_pdf_extraction_is_reused_and_general_care_uses_care_chapter():

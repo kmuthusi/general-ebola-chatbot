@@ -8,6 +8,12 @@ import ollama
 DEFAULT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.1:8b")
 KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")
 REFUSAL = "I cannot find this in the supplied guideline."
+PUBLIC_SAFETY = (
+    "This is a public information service: summarize clinical guidance at a high level. "
+    "Do not give an individual treatment plan, medication dose, fluid rate, invasive "
+    "procedure, or step-by-step emergency instructions. Direct individual care "
+    "decisions to qualified health workers using current local protocols. "
+)
 
 
 def compose_answer(question: str, evidence: list[dict], ollama_model: str = DEFAULT_MODEL) -> str:
@@ -31,6 +37,7 @@ def compose_answer(question: str, evidence: list[dict], ollama_model: str = DEFA
                     "Answer concisely in 3 to 5 short bullets. End every bullet with its supporting "
                     "(PDF Page N) citation; section numbers alone are not citations. "
                     "Do not use a bibliography entry as evidence for patient care. "
+                    f"{PUBLIC_SAFETY}"
                     "For a request about the guideline itself, summarize its purpose, intended users, "
                     "scope and main topics. Include at least one PDF page citation in every paragraph. "
                     "The PDF page number may differ from the page number printed in the document. "
@@ -60,6 +67,7 @@ def repair_citations(question: str, draft: str, evidence: list[dict], ollama_mod
                     "Every factual sentence must end with a citation in the exact format "
                     "(PDF Page N), using the page of an excerpt that supports that sentence. "
                     "Omit any draft claim that the excerpts do not support. "
+                    f"{PUBLIC_SAFETY}"
                     f"If no supported answer is possible, reply exactly: {REFUSAL}"
                 ),
             },

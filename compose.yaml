@@ -1,0 +1,73 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  models:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.1:8b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text:latest}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ['ollama pull "${OLLAMA_EMBED_MODEL:-nomic-embed-text:latest}" && ollama pull "${OLLAMA_CHAT_MODEL:-llama3.1:8b}"']
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  indexer:
+    build: .
+    image: kenya-ebola-assistant:local
+    command: ["python", "simple_rag.py", "--index", "--pdf", "/app/guideline.pdf"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text:latest}
+    volumes:
+      - type: bind
+        source: ${GUIDELINE_SOURCE:-./Final Case Management Guidelines for Ebola Virus- 23102026 V5.pdf}
+        target: /app/guideline.pdf
+        read_only: true
+      - chroma_data:/app/chroma_db
+    depends_on:
+      models:
+        condition: service_completed_successfully
+    restart: "no"
+
+  app:
+    build: .
+    image: kenya-ebola-assistant:local
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.1:8b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text:latest}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      GUIDELINE_PDF_PATH: /app/guideline.pdf
+      EVIDENCE_PASSAGES: ${EVIDENCE_PASSAGES:-5}
+      MAX_CONCURRENT_ANSWERS: ${MAX_CONCURRENT_ANSWERS:-2}
+    volumes:
+      - type: bind
+        source: ${GUIDELINE_SOURCE:-./Final Case Management Guidelines for Ebola Virus- 23102026 V5.pdf}
+        target: /app/guideline.pdf
+        read_only: true
+      - chroma_data:/app/chroma_db
+    ports:
+      - "127.0.0.1:${APP_PORT:-8501}:8501"
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
+
+volumes:
+  ollama_models:
+  chroma_data:
