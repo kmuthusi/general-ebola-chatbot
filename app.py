@@ -125,12 +125,19 @@ if not st.session_state.messages:
     with st.chat_message("assistant"):
         st.markdown("Hello! Ask about the WHO documents on Ebola and Marburg care, IPC, diagnostics, therapeutics, or outbreak criteria.")
 
+UNVERIFIED_FALLBACK = (
+    "I couldn't verify an answer in the WHO guidelines. "
+    "Please try rephrasing or ask about a specific topic."
+)
+
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-        if message.get("issues"):
-            st.warning("This answer could not be verified against the guidelines.")
-        show_sources(message.get("chunks", []))
+        unverified = bool(message.get("issues"))
+        st.markdown(UNVERIFIED_FALLBACK if unverified else message["content"])
+        if unverified:
+            st.warning("The generated answer was hidden because it could not be verified.")
+        else:
+            show_sources(message.get("chunks", []))
 
 if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
     earlier_questions = tuple(
@@ -163,12 +170,15 @@ if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
                               "Please try again later.", "chunks": [], "issues": []}
                 finally:
                     slots.release()
-        st.markdown(result["answer"])
-        if result["issues"]:
-            st.warning("This answer could not be verified against the guidelines.")
-        show_sources(result["chunks"])
+        unverified = bool(result.get("issues"))
+        answer = UNVERIFIED_FALLBACK if unverified else result["answer"]
+        st.markdown(answer)
+        if unverified:
+            st.warning("The generated answer was hidden because it could not be verified.")
+        else:
+            show_sources(result["chunks"])
     st.session_state.messages.append(
-        {"role": "assistant", "content": result["answer"],
-         "chunks": result["chunks"], "issues": result["issues"]}
+        {"role": "assistant", "content": answer,
+         "chunks": [] if unverified else result["chunks"], "issues": result.get("issues", [])}
     )
     st.session_state.messages = st.session_state.messages[-20:]
