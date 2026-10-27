@@ -137,6 +137,8 @@ for message in st.session_state.messages:
         if unverified:
             st.warning("The generated answer was hidden because it could not be verified.")
         else:
+            if message.get("warnings"):
+                st.warning("Some claims were omitted because their cited passages could not be confirmed.")
             show_sources(message.get("chunks", []))
 
 if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
@@ -176,9 +178,12 @@ if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
         if unverified:
             st.warning("The generated answer was hidden because it could not be verified.")
         else:
+            if result.get("warnings"):
+                st.warning("Some claims were omitted because their cited passages could not be confirmed.")
             show_sources(result["chunks"])
     st.session_state.messages.append(
         {"role": "assistant", "content": answer,
-         "chunks": [] if unverified else result["chunks"], "issues": result.get("issues", [])}
+         "chunks": [] if unverified else result["chunks"], "issues": result.get("issues", []),
+         "warnings": result.get("warnings", [])}
     )
     st.session_state.messages = st.session_state.messages[-20:]

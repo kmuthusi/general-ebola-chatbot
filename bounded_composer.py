@@ -124,18 +124,21 @@ def repair_citations(question: str, draft: str, evidence: list[dict], ollama_mod
 
 def verify_claim_support(
     answer: str, evidence: list[dict], ollama_model: str = DEFAULT_MODEL
-) -> tuple[bool, str]:
+) -> tuple[str, list[str]]:
     """Check each claim against only its cited page and require a verbatim support quote."""
     if answer.strip() == REFUSAL:
-        return True, ""
+        return REFUSAL, []
     verifier_model = os.getenv("OLLAMA_VERIFY_MODEL", ollama_model)
+    verified_lines = []
+    issues = []
     for line_number, line in enumerate(
         (line.strip() for line in answer.splitlines() if line.strip()), start=1
     ):
         citation = CLAIM_CITATION_RE.search(line)
         citations = CLAIM_CITATION_RE.findall(line)
         if not citation or len(citations) != 1:
-            return False, f"Claim {line_number} must have exactly one page citation."
+            issues.append(f"Claim {line_number} must have exactly one page citation.")
+            continue
 
         source, page = citation.group(1).lower(), int(citation.group(2))
         source_page = next(
@@ -147,7 +150,8 @@ def verify_claim_support(
             None,
         )
         if source_page is None:
-            return False, f"Claim {line_number} cites a page that was not retrieved."
+            issues.append(f"Claim {line_number} cites a page that was not retrieved.")
+            continue
 
         claim = CLAIM_CITATION_RE.sub("", line).lstrip("- ").rstrip(".!? ")
         passage = source_page.get("text", "")
@@ -177,24 +181,32 @@ def verify_claim_support(
             )
             audit = json.loads(response["message"]["content"])
         except Exception:
-            return False, f"Claim {line_number} could not be checked against its cited passage."
+            issues.append(f"Claim {line_number} could not be checked against its cited passage.")
+            continue
 
         quote = " ".join(str(audit.get("quote", "")).split())
         normalized_passage = " ".join(passage.split())
         if audit.get("supported") is not True or not quote:
             reason = audit.get("reason", "The cited passage does not support the claim.")
-            return False, f"Claim {line_number}: {reason}"
+            issues.append(f"Claim {line_number}: {reason}")
+            continue
         if quote.casefold() not in normalized_passage.casefold():
-            return False, f"Claim {line_number} did not have a verifiable source quote."
+            issues.append(f"Claim {line_number} did not have a verifiable source quote.")
+            continue
 
-        claim_terms = {
-            term for term in re.findall(r"[a-z0-9]+", claim.lower())
-            if len(term) > 2 and term not in CLAIM_STOP_WORDS
-        }
-        quote_terms = set(re.findall(r"[a-z0-9]+", quote.lower()))
-        shared_terms = claim_terms & quote_terms
-        required_overlap = min(len(claim_terms), max(2, (len(claim_terms) + 1) // 2))
-        if not claim_terms or len(shared_terms) < required_overlap:
-            return False, f"Claim {line_number} has too little wording in common with its support quote."
+        animal_origin_claim = re.search(
+            r"\b(?:wild\s+animals?|fruit\s+bats?|bats?|porcupines?|non[- ]human\s+primates?|zoonotic|reservoir)\b",
+            claim,
+            re.I,
+        )
+        animal_origin_quote = re.search(
+            r"\b(?:wildlife|wild\s+animals?|fruit\s+bats?|bats?|porcupines?|primates?|zoonotic|reservoir|animal[- ]to[- ]human)\b",
+            quote,
+            re.I,
+        )
+        if animal_origin_claim and not animal_origin_quote:
+            issues.append(f"Claim {line_number} does not have direct source wording for its animal-origin detail.")
+            continue
+        verified_lines.append(line)
 
-    return True, ""
+    return "\n".join(verified_lines) if verified_lines else REFUSAL, issues

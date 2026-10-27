@@ -18,7 +18,7 @@ from public_safety import CARE_REDIRECT, requires_professional_care
 from rag_pipeline import exclude_bibliography, rerank_and_release
 from retrievers import DEFAULT_SOURCE, GuidelineRetriever
 from vector_store import VectorStore
-from verifier import verify_answer
+from verifier import CITATION_RE, filter_verified_format
 
 
 DEFAULT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.1:8b")
@@ -69,22 +69,30 @@ class SimpleAssistantRAG:
         answer = normalize_generated_text(
             compose_answer(search_question, evidence, request.ollama_model)
         )
-        checked = verify_answer(answer, evidence)
-        if checked["issues"]:
+        checked = filter_verified_format(answer, evidence)
+        if checked["verified_answer"] == REFUSAL and checked["issues"]:
             answer = normalize_generated_text(
                 repair_citations(search_question, answer, evidence, request.ollama_model)
             )
-            checked = verify_answer(answer, evidence)
+            checked = filter_verified_format(answer, evidence)
         issues = list(checked["issues"])
-        if not issues and checked["verified_answer"] != REFUSAL:
-            supported, reason = verify_claim_support(
+        final_answer = checked["verified_answer"]
+        if final_answer != REFUSAL:
+            final_answer, support_issues = verify_claim_support(
                 checked["verified_answer"], evidence, request.ollama_model
             )
-            if not supported:
-                issues.append(reason)
-        final_answer = REFUSAL if issues else checked["verified_answer"]
-        return {"answer": final_answer, "issues": issues,
-                "chunks": evidence if not issues else [], "elapsed_seconds": round(time.perf_counter() - started, 2)}
+            issues.extend(support_issues)
+        partial = bool(issues) and final_answer != REFUSAL
+        citations = {
+            (source.lower(), int(page)) for source, page in CITATION_RE.findall(final_answer)
+        }
+        verified_evidence = [
+            item for item in evidence
+            if (item["source"].lower(), item["page"]) in citations
+        ]
+        return {"answer": final_answer, "issues": [] if partial else issues,
+                "warnings": ["Some claims were omitted because their cited passages could not be confirmed."] if partial else [],
+                "chunks": verified_evidence, "elapsed_seconds": round(time.perf_counter() - started, 2)}
 
 
 def main() -> None:
