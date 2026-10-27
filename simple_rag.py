@@ -1,4 +1,4 @@
-"""CLI and shared orchestration for the guideline assistant."""
+"""CLI and shared orchestration for the WHO guidelines assistant."""
 
 import argparse
 import os
@@ -68,7 +68,7 @@ class SimpleAssistantRAG:
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    parser = argparse.ArgumentParser(description="WHO Ebola Guidance Assistant")
+    parser = argparse.ArgumentParser(description="WHO Ebola Guidelines Assistant")
     parser.add_argument("--source", default=DEFAULT_SOURCE, help="Directory of WHO PDFs or one PDF")
     parser.add_argument("--index", action="store_true", help="Build or refresh the local index")
     parser.add_argument("--ask", help="Ask a question about the WHO documents")

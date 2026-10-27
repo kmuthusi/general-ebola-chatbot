@@ -1,4 +1,4 @@
-"""Preload the Ollama models used by the guideline assistant."""
+"""Preload the Ollama models used by the WHO guidelines assistant."""
 
 import os
 import time

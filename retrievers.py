@@ -1,4 +1,4 @@
-"""Extract all WHO guideline PDFs with document-aware page citations."""
+"""Extract all WHO guidelines with document-aware page citations."""
 
 from functools import lru_cache
 from pathlib import Path
@@ -31,7 +31,7 @@ class GuidelineRetriever:
         else:
             paths = []
         if not paths:
-            raise FileNotFoundError(f"No WHO guideline PDFs found in: {self.source_path}")
+            raise FileNotFoundError(f"No WHO guidelines were found in: {self.source_path}")
         pages = []
         for file in paths:
             path = file.resolve()
@@ -41,5 +41,5 @@ class GuidelineRetriever:
                 for number, text in _read_pdf(path, stat.st_mtime_ns, stat.st_size)
             )
         if not pages:
-            raise ValueError("The WHO guideline PDFs have no extractable text.")
+            raise ValueError("No text could be extracted from the WHO guidelines.")
         return pages

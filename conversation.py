@@ -32,7 +32,7 @@ def clarification_for(question: str, earlier_questions: tuple[str, ...] = ()) ->
         if previous and previous.lower() != topic.lower():
             return (
                 f"Would you like to compare {topic} with {previous}, or ask about "
-                f"{topic}'s symptoms, transmission, or coverage in the guideline?"
+                f"{topic}'s symptoms, transmission, or coverage in the WHO guidelines?"
             )
         return f"Which aspect of {topic} do you mean—symptoms, transmission, or care?"
     match = POPULATION_RE.fullmatch(current)
@@ -60,7 +60,7 @@ def contextualize_question(question: str, earlier_questions: tuple[str, ...] = (
             if population:
                 topic = recent_topic(earlier_questions[:-1]) or "filovirus disease"
                 return (
-                    f"What does the guideline say about {aspect.group(1).lower()} "
+                    f"What do the WHO guidelines say about {aspect.group(1).lower()} "
                     f"of {topic} in {population.group(1).lower()}?"
                 )
             named_topic = TOPIC_ONLY_RE.fullmatch(last)
@@ -69,11 +69,11 @@ def contextualize_question(question: str, earlier_questions: tuple[str, ...] = (
                 if aspect.group(1).lower() in {"comparison", "compare"}:
                     previous = recent_topic(earlier_questions[:-1])
                     if previous:
-                        return f"How does the guideline compare {topic} with {previous}?"
-                return f"What does the guideline say about {aspect.group(1).lower()} of {topic} disease?"
+                        return f"How do the WHO guidelines compare {topic} with {previous}?"
+                return f"What do the WHO guidelines say about {aspect.group(1).lower()} of {topic} disease?"
     topic_only = TOPIC_ONLY_RE.fullmatch(current)
     if topic_only:
-        return f"What does the guideline say about {topic_only.group(1).capitalize()} disease?"
+        return f"What do the WHO guidelines say about {topic_only.group(1).capitalize()} disease?"
     if TOPIC_RE.search(current) or not earlier_questions:
         return current
     follow_up = re.search(r"\b(it|its|they|them|this|that|those|these|same)\b", current, re.I)
@@ -84,7 +84,7 @@ def contextualize_question(question: str, earlier_questions: tuple[str, ...] = (
     if topic:
         if re.match(r"^(what|how) about\b", current, re.I):
             detail = re.sub(r"^(what|how) about\s+", "", current, flags=re.I).rstrip(" ?")
-            return f"What does the guideline say about {detail} in {topic} disease?"
+            return f"What do the WHO guidelines say about {detail} in {topic} disease?"
         resolved = re.sub(r"\b(it|its|they|them|this|that|those|these)\b", topic,
                           current, count=1, flags=re.I)
         if resolved != current:

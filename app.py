@@ -38,7 +38,7 @@ def start_model_warmup(chat_model: str, embed_model: str, source_path: str) -> F
                 pages.result()
             future.set_result(round(time.perf_counter() - started, 2))
         except Exception as exc:
-            LOGGER.exception("Guideline assistant startup failed")
+            LOGGER.exception("Guidelines assistant startup failed")
             future.set_exception(exc)
 
     Thread(target=load, daemon=True, name="ollama-model-warmup").start()
@@ -86,12 +86,12 @@ warmup = start_model_warmup(model, embed_model, source_path)
 @st.fragment(run_every="5s")
 def show_warmup_status() -> None:
     if not warmup.done():
-        st.caption("Preparing the guideline assistant...")
+        st.caption("Preparing the WHO guidelines...")
         return
     try:
         warmup.result()
     except Exception:
-        st.warning("The guideline assistant is temporarily unavailable.")
+        st.warning("The WHO guidelines assistant is temporarily unavailable.")
         if st.button("Try again"):
             start_model_warmup.clear()
             st.rerun()
@@ -129,10 +129,10 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if message.get("issues"):
-            st.warning("This answer could not be verified against the guideline.")
+            st.warning("This answer could not be verified against the guidelines.")
         show_sources(message.get("chunks", []))
 
-if question := st.chat_input("Ask about the guideline", max_chars=500):
+if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
     earlier_questions = tuple(
         message["content"]
         for message in st.session_state.messages
@@ -152,20 +152,20 @@ if question := st.chat_input("Ask about the guideline", max_chars=500):
                           "chunks": [], "issues": []}
             else:
                 try:
-                    with st.spinner("Checking the guideline..."):
+                    with st.spinner("Checking the WHO guidelines..."):
                         warmup.result(timeout=180)
                         result = SimpleAssistantRAG(source_path, model).ask(
                             SimpleAssistantRequest(question, top_k, model, earlier_questions)
                         )
                 except Exception:
-                    LOGGER.exception("Guideline question failed")
-                    result = {"answer": "The guideline assistant is temporarily unavailable. "
+                    LOGGER.exception("Guidelines question failed")
+                    result = {"answer": "The WHO guidelines assistant is temporarily unavailable. "
                               "Please try again later.", "chunks": [], "issues": []}
                 finally:
                     slots.release()
         st.markdown(result["answer"])
         if result["issues"]:
-            st.warning("This answer could not be verified against the guideline.")
+            st.warning("This answer could not be verified against the guidelines.")
         show_sources(result["chunks"])
     st.session_state.messages.append(
         {"role": "assistant", "content": result["answer"],

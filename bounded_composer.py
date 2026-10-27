@@ -1,4 +1,4 @@
-"""Generate answers from retrieved guideline passages only."""
+"""Generate answers from passages in the WHO guidelines only."""
 
 import os
 

@@ -20,7 +20,7 @@ def test_all_who_pdfs_are_read_with_distinct_sources():
 
 
 def test_empty_directory_fails_clearly(tmp_path):
-    with pytest.raises(FileNotFoundError, match="No WHO guideline PDFs"):
+    with pytest.raises(FileNotFoundError, match="No WHO guidelines"):
         GuidelineRetriever(str(tmp_path)).read_and_chunk()
 
 

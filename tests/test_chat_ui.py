@@ -16,11 +16,11 @@ def test_chat_keeps_turns_and_can_start_over(monkeypatch):
 
         def ask(self, request):
             seen.append((request.question, request.earlier_questions))
-            return {"answer": "Guideline answer (PDF Page 12).", "issues": [],
-                    "chunks": [{"source": "clinical-management-filovirus-2026.pdf", "page": 12, "text": "Guideline evidence."}]}
+            return {"answer": "Answer based on the WHO guidelines (PDF Page 12).", "issues": [],
+                    "chunks": [{"source": "clinical-management-filovirus-2026.pdf", "page": 12, "text": "Text from the WHO guidelines."}]}
 
     monkeypatch.setattr(model_warmup, "warm_models", lambda *args: 0.0)
-    monkeypatch.setattr(GuidelineRetriever, "read_and_chunk", lambda self: [{"page": 12, "text": "Guideline evidence."}])
+    monkeypatch.setattr(GuidelineRetriever, "read_and_chunk", lambda self: [{"page": 12, "text": "Text from the WHO guidelines."}])
     monkeypatch.setattr(simple_rag, "SimpleAssistantRAG", FakeRAG)
 
     app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"))

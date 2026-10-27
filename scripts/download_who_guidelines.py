@@ -45,7 +45,7 @@ class LinkParser(HTMLParser):
 
 
 def fetch(url):
-    request = Request(url, headers={"User-Agent": "Kenya-Ebola-Guideline-Assistant/1.0"})
+    request = Request(url, headers={"User-Agent": "Kenya-Ebola-Guidelines-Assistant/1.0"})
     with urlopen(request, timeout=30) as response:
         return response.read(), response.url
 

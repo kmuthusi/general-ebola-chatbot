@@ -22,7 +22,7 @@ def test_warmup_loads_embedding_then_chat_model(monkeypatch):
     "How should I manage an Ebola patient?",
     "How to administer mAb114?",
     "What dose of medicine should I use?",
-    "What does the guideline say about IV fluid dosing?",
+    "What do the WHO guidelines say about IV fluid dosing?",
     "My child has fever after travel.",
     "I have fever and think I have Ebola.",
 ])
@@ -39,7 +39,7 @@ def test_follow_up_uses_only_recent_user_questions_for_context():
     assert contextualize_question("How is it transmitted?", history) == "How is Ebola transmitted?"
     assert "Which aspect of Ebola in children" in clarification_for("What about children?", history)
     assert contextualize_question("What about Marburg?", history) == (
-        "What does the guideline say about Marburg disease?"
+        "What do the WHO guidelines say about Marburg disease?"
     )
     assert "compare Marburg with Ebola" in clarification_for("What about Marburg?", history)
 

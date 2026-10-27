@@ -4,7 +4,7 @@ import re
 
 
 CARE_REDIRECT = (
-    "This assistant can explain what the guideline covers, but it cannot guide "
+    "This assistant can explain what the WHO guidelines cover, but it cannot guide "
     "an individual patient's care or provide treatment instructions. If Ebola "
     "is suspected, contact a health facility or local public health response "
     "team promptly."
