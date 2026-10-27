@@ -41,6 +41,7 @@ def compose_answer(question: str, evidence: list[dict], ollama_model: str = DEFA
                     "For a request about the guideline itself, summarize its purpose, intended users, "
                     "scope and main topics. Include at least one PDF page citation in every paragraph. "
                     "The PDF page number may differ from the page number printed in the document. "
+                    "If an earlier user question is included for context, answer only the current follow-up. "
                     "Do not present this as individual medical advice."
                 ),
             },

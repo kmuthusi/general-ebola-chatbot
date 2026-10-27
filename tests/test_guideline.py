@@ -4,9 +4,11 @@ import pytest
 
 import simple_rag
 import model_warmup
+from conversation import clarification_for, contextualize_question
 from public_safety import requires_professional_care
 from bounded_composer import REFUSAL
 from rag_pipeline import (
+    exclude_bibliography,
     is_general_management_question,
     is_overview_question,
     management_evidence,
@@ -56,6 +58,58 @@ def test_public_care_requests_are_redirected(question):
 
 def test_general_document_question_is_available_to_public():
     assert not requires_professional_care("What topics does the guideline cover?")
+
+
+def test_follow_up_uses_only_recent_user_questions_for_context():
+    history = ("What is Ebola?", "How does it spread?")
+    assert contextualize_question("How is it transmitted?", history) == "How is Ebola transmitted?"
+    assert "Which aspect of Ebola in children" in clarification_for("What about children?", history)
+    assert contextualize_question("What about Marburg?", history) == (
+        "What does the guideline say about Marburg disease?"
+    )
+    assert "compare Marburg with Ebola" in clarification_for("What about Marburg?", history)
+    assert contextualize_question("symptoms", ("What is Ebola?", "What about children?")) == (
+        "What does the guideline say about symptoms of Ebola in children?"
+    )
+    assert contextualize_question("comparison", ("What is Ebola?", "What about Marburg?")) == (
+        "How does the guideline compare Marburg with Ebola?"
+    )
+    assert contextualize_question("What is Marburg?", history) == "What is Marburg?"
+
+
+def test_ambiguous_follow_up_asks_before_retrieval(monkeypatch):
+    class FakeStore:
+        def __init__(self, **kwargs):
+            pass
+
+        def ensure_index(self, pages):
+            pytest.fail("Ambiguous follow-up should not reach retrieval")
+
+    monkeypatch.setattr(simple_rag, "VectorStore", FakeStore)
+    rag = SimpleAssistantRAG("guideline.pdf")
+    result = rag.ask(SimpleAssistantRequest(
+        "What about children?", earlier_questions=("What is Ebola?",)
+    ))
+    assert "Which aspect of Ebola in children" in result["answer"]
+    assert result["chunks"] == []
+    switched = rag.ask(SimpleAssistantRequest(
+        "What about Marburg?", earlier_questions=("What is Ebola?",)
+    ))
+    assert "compare Marburg with Ebola" in switched["answer"]
+    assert switched["chunks"] == []
+
+
+def test_bibliography_is_excluded_from_ordinary_answers():
+    pages = [
+        {"page": 12, "text": "Ebola disease overview."},
+        {"page": 78, "text": "71\n11. References\nWHO guideline."},
+    ]
+    candidates = [
+        {"page": 78, "text": "WHO guideline.", "score": 0.8},
+        {"page": 12, "text": "Ebola disease overview.", "score": 0.7},
+    ]
+    assert [item["page"] for item in exclude_bibliography("What is Ebola?", candidates, pages)] == [12]
+    assert exclude_bibliography("Show references", candidates, pages) == candidates
 
 
 def test_pdf_extraction_is_reused_and_general_care_uses_care_chapter():
@@ -117,6 +171,7 @@ def test_overview_uses_document_scope_not_table_of_contents(monkeypatch):
     evidence = overview_evidence(pages)
     assert [item["page"] for item in evidence] == [4, 10, 12, 12]
     assert is_overview_question("tell me about this guidelines")
+    assert is_overview_question("What does the guideline cover?")
     assert not is_overview_question("How should a suspected case be isolated under the guideline?")
     assert not is_overview_question("Summarize isolation guidance in this guideline")
 

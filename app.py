@@ -46,16 +46,35 @@ def start_model_warmup(chat_model: str, embed_model: str, pdf_path: str) -> Futu
 
 
 st.set_page_config(page_title="Kenya Ebola Care Guide")
-st.title("Kenya Ebola Care Guide")
-st.caption("Ask about Kenya's 2026 filovirus case management guideline.")
-st.info(
-    "This assistant uses the Government of Kenya's October 2026 *Case Management Guidelines "
-    "for Filovirus Disease*. It explains the document's guidance for health workers on Ebola "
-    "and related filovirus diseases, with PDF page citations. It cannot diagnose illness or "
-    "direct individual care. If infection is suspected, contact a health facility or public "
-    "health response team promptly."
+st.markdown(
+    """
+    <style>
+    @media (max-width: 600px) {
+      [data-testid="stMainBlockContainer"] {
+        padding: 1.25rem 1rem 2rem !important;
+        max-width: 100% !important;
+      }
+      [data-testid="stMainBlockContainer"] h1 {
+        font-size: 1.9rem;
+        line-height: 1.15;
+      }
+      [data-testid="stChatInput"] textarea {
+        font-size: 16px;
+      }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
-st.caption("Please do not enter names, contact details, or personal medical records.")
+st.title("Kenya Ebola Care Guide")
+st.info(
+    "Based on Kenya's October 2026 *Case Management Guidelines for Filovirus Disease*. "
+    "Ask about Ebola and related filovirus care; answers cite PDF pages."
+)
+st.caption(
+    "General information only. For suspected infection, contact a health facility or "
+    "public health team. Do not enter personal details."
+)
 
 pdf_path = os.getenv("GUIDELINE_PDF_PATH", DEFAULT_PDF)
 model = DEFAULT_MODEL
@@ -71,7 +90,6 @@ def show_warmup_status() -> None:
         return
     try:
         warmup.result()
-        st.caption("Guideline assistant ready.")
     except Exception:
         st.warning("The guideline assistant is temporarily unavailable.")
         if st.button("Try again"):
@@ -81,33 +99,76 @@ def show_warmup_status() -> None:
 
 show_warmup_status()
 
-with st.form("question_form"):
-    question = st.text_input("Ask about the guideline", max_chars=500)
-    submitted = st.form_submit_button("Ask")
+def show_sources(chunks: list[dict]) -> None:
+    if not chunks:
+        return
+    by_page: dict[int, list[str]] = {}
+    for item in chunks:
+        texts = by_page.setdefault(item["page"], [])
+        if item["text"] not in texts:
+            texts.append(item["text"])
+    with st.expander("View source passages"):
+        for page, texts in by_page.items():
+            st.markdown(f"**PDF Page {page}**")
+            for text in texts:
+                st.write(text)
 
-if submitted and requires_professional_care(question):
-    st.info(CARE_REDIRECT)
-elif submitted and question.strip():
-    slots = answer_slots()
-    if not slots.acquire(blocking=False):
-        st.warning("The assistant is busy. Please try again shortly.")
-    else:
-        try:
-            with st.spinner("Checking the guideline..."):
-                warmup.result(timeout=180)
-                result = SimpleAssistantRAG(pdf_path, model).ask(
-                    SimpleAssistantRequest(question, top_k, model)
-                )
-            st.subheader("Answer")
-            st.write(result["answer"])
-            if result["issues"]:
-                st.warning("The answer could not be verified against the guideline. Review the passages below.")
-            st.subheader("Source passages")
-            for item in result["chunks"]:
-                with st.expander(f"PDF Page {item['page']}"):
-                    st.write(item["text"])
-        except Exception:
-            LOGGER.exception("Guideline question failed")
-            st.error("The guideline assistant is temporarily unavailable. Please try again later.")
-        finally:
-            slots.release()
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if st.session_state.messages and st.button("New chat", type="tertiary"):
+    st.session_state.messages = []
+    st.rerun()
+
+if not st.session_state.messages:
+    with st.chat_message("assistant"):
+        st.markdown("Hello! Ask about the guideline's scope, screening, isolation, or supportive care.")
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        if message.get("issues"):
+            st.warning("This answer could not be verified against the guideline.")
+        show_sources(message.get("chunks", []))
+
+if question := st.chat_input("Ask about the guideline", max_chars=500):
+    earlier_questions = tuple(
+        message["content"]
+        for message in st.session_state.messages
+        if message["role"] == "user"
+    )[-2:]
+    st.session_state.messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.markdown(question)
+
+    with st.chat_message("assistant"):
+        if requires_professional_care(question):
+            result = {"answer": CARE_REDIRECT, "chunks": [], "issues": []}
+        else:
+            slots = answer_slots()
+            if not slots.acquire(blocking=False):
+                result = {"answer": "The assistant is busy. Please try again shortly.",
+                          "chunks": [], "issues": []}
+            else:
+                try:
+                    with st.spinner("Checking the guideline..."):
+                        warmup.result(timeout=180)
+                        result = SimpleAssistantRAG(pdf_path, model).ask(
+                            SimpleAssistantRequest(question, top_k, model, earlier_questions)
+                        )
+                except Exception:
+                    LOGGER.exception("Guideline question failed")
+                    result = {"answer": "The guideline assistant is temporarily unavailable. "
+                              "Please try again later.", "chunks": [], "issues": []}
+                finally:
+                    slots.release()
+        st.markdown(result["answer"])
+        if result["issues"]:
+            st.warning("This answer could not be verified against the guideline.")
+        show_sources(result["chunks"])
+    st.session_state.messages.append(
+        {"role": "assistant", "content": result["answer"],
+         "chunks": result["chunks"], "issues": result["issues"]}
+    )
+    st.session_state.messages = st.session_state.messages[-20:]

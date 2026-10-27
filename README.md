@@ -11,6 +11,12 @@ particular attention to Ebola viruses of concern to Kenya.
 
 The app extracts text with pypdf, embeds passages with Ollama, stores them in
 Chroma, and uses a local Ollama chat model to answer with **PDF page** citations.
+The web app displays a conversation with source passages attached to each
+answer. Recent user questions provide limited context for short follow-ups;
+ambiguous prompts such as "What about children?" ask for clarification instead
+of guessing. Brief replies to those clarifications can be combined with the
+earlier topic. The conversation is kept in the current Streamlit session and can be cleared
+with **New chat**.
 PDF page numbers refer to the page position in the file and can differ from
 page numbers printed inside the document. Answers without valid citations are
 withheld. Broad questions about the guideline use its scope, foreword, and

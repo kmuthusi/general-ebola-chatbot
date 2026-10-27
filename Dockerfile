@@ -11,7 +11,7 @@ RUN python -m pip install --no-cache-dir -r requirements-deploy.txt \
     && mkdir -p /app/chroma_db \
     && chown -R appuser:appuser /app/chroma_db
 
-COPY --chown=appuser:appuser app.py bounded_composer.py model_warmup.py public_safety.py rag_pipeline.py retrievers.py simple_rag.py vector_store.py verifier.py ./
+COPY --chown=appuser:appuser app.py bounded_composer.py conversation.py model_warmup.py public_safety.py rag_pipeline.py retrievers.py simple_rag.py vector_store.py verifier.py ./
 COPY --chown=appuser:appuser .streamlit/config.toml ./.streamlit/config.toml
 
 USER appuser

@@ -7,7 +7,9 @@ import time
 from dataclasses import dataclass
 
 from bounded_composer import REFUSAL, compose_answer, repair_citations
+from conversation import clarification_for, contextualize_question
 from rag_pipeline import (
+    exclude_bibliography,
     is_general_management_question,
     is_overview_question,
     management_evidence,
@@ -27,6 +29,7 @@ class SimpleAssistantRequest:
     question: str
     top_k: int = 5
     ollama_model: str = DEFAULT_MODEL
+    earlier_questions: tuple[str, ...] = ()
 
 
 class SimpleAssistantRAG:
@@ -42,26 +45,36 @@ class SimpleAssistantRAG:
         if not request.question.strip():
             raise ValueError("Question must not be empty.")
         started = time.perf_counter()
+        clarification = clarification_for(request.question, request.earlier_questions)
+        if clarification:
+            return {"answer": clarification, "issues": [], "chunks": [],
+                    "elapsed_seconds": round(time.perf_counter() - started, 2)}
+        search_question = contextualize_question(request.question, request.earlier_questions)
         pages = self.retriever.read_and_chunk()
         self.store.ensure_index(pages)
         evidence = (
             overview_evidence(pages)[:request.top_k]
-            if is_overview_question(request.question)
+            if is_overview_question(search_question)
             else []
         )
         if not evidence and is_general_management_question(request.question):
             evidence = management_evidence(pages)[:request.top_k]
         if not evidence:
-            candidates = self.store.query(request.question, k=request.top_k, include_scores=True)
-            selected = rerank_and_release(request.question, candidates, intent="guideline")
+            candidates = self.store.query(
+                search_question, k=max(15, request.top_k * 3), include_scores=True
+            )
+            candidates = exclude_bibliography(search_question, candidates, pages)
+            selected = rerank_and_release(
+                search_question, candidates, intent="guideline", limit=request.top_k
+            )
             evidence = selected["evidence"]
             if selected["release"] == "refusal":
                 return {"answer": REFUSAL, "issues": [], "chunks": evidence,
                         "elapsed_seconds": round(time.perf_counter() - started, 2)}
-        answer = compose_answer(request.question, evidence, request.ollama_model)
+        answer = compose_answer(search_question, evidence, request.ollama_model)
         checked = verify_answer(answer, evidence)
         if checked["issues"]:
-            answer = repair_citations(request.question, answer, evidence, request.ollama_model)
+            answer = repair_citations(search_question, answer, evidence, request.ollama_model)
             checked = verify_answer(answer, evidence)
         return {"answer": checked["verified_answer"], "issues": checked["issues"],
                 "chunks": evidence, "elapsed_seconds": round(time.perf_counter() - started, 2)}

@@ -19,7 +19,8 @@ def is_overview_question(question: str) -> bool:
     if words & clinical_terms:
         return False
     return bool(words & {"guideline", "guidelines", "document", "pdf"}) and bool(
-        words & {"about", "overview", "summarize", "summary", "describe"}
+        words & {"about", "overview", "summarize", "summary", "describe",
+                 "cover", "covers", "scope", "topics", "contain", "contains"}
     )
 
 
@@ -84,13 +85,33 @@ def management_evidence(pages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             break
     return evidence if len(evidence) >= 2 else []
 
+
+def exclude_bibliography(question: str, candidates: List[Dict[str, Any]],
+                         pages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Keep reference-list chunks out of ordinary guideline answers."""
+    if re.search(r"\b(references?|bibliography|citations?)\b", question, re.I):
+        return candidates
+    first_reference_page = next(
+        (
+            page["page"]
+            for page in pages
+            if re.search(r"(?m)^\s*\d+\.\s+References\s*$", page["text"][:250])
+        ),
+        None,
+    )
+    if first_reference_page is None:
+        return candidates
+    filtered = [item for item in candidates if item.get("page", 0) < first_reference_page]
+    return filtered or candidates
+
 def _simple_relevance_score(candidate: Dict[str, Any]) -> float:
     """Combine embedding similarity (already inverted in vector_store) + page bonus."""
     s = candidate.get("score", 0.0) or 0.0
     page_bonus = 0.05 if candidate.get("page") else 0.0
     return s + page_bonus
 
-def rerank_and_release(question: str, candidates: List[Dict[str, Any]], intent: str) -> Dict[str, Any]:
+def rerank_and_release(question: str, candidates: List[Dict[str, Any]], intent: str,
+                       limit: int = 5) -> Dict[str, Any]:
     # Basic reranking
     ranked = sorted(candidates, key=_simple_relevance_score, reverse=True)
     evidence = ranked[:len(ranked)]
@@ -99,4 +120,4 @@ def rerank_and_release(question: str, candidates: List[Dict[str, Any]], intent: 
     if not evidence or all((c.get("score") or 0) < 0.2 for c in evidence):
         return {"evidence": evidence[:2], "release": "refusal"}
 
-    return {"evidence": evidence[:5], "release": "grounded"}
+    return {"evidence": evidence[:limit], "release": "grounded"}

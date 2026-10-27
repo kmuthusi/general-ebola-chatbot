@@ -1,8 +1,9 @@
 # Deployment guide
 
 This repository provides a single-host deployment package for the public-facing
-Streamlit app, Ollama and a persistent Chroma index. The web page exposes only a
-question box, answer and source passages. Model choice, PDF path, passage count
+Streamlit app, Ollama and a persistent Chroma index. The web page exposes a
+chat with cited answers and collapsible source passages. Conversation turns
+are held in the current Streamlit session. Model choice, PDF path, passage count
 and index creation are operator settings. Obvious individual care and dosing
 requests are redirected to health professionals; this rule-based guard is not a
 complete clinical safety system.
