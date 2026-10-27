@@ -3,3 +3,4 @@ chromadb==1.5.8
 ollama==0.6.2
 python-dotenv==1.0.1
 streamlit==1.57.0
+pyarrow==26.0.0

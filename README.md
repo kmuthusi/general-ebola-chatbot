@@ -29,9 +29,11 @@ facility or the appropriate public health response team.
 
 ## Setup
 
-Requires Python 3.11+ and Ollama running locally. From this folder:
+Requires Python 3.11+ and Ollama running locally. On Windows, use the isolated environment below; it avoids the old PyArrow runtime that can crash Chroma. From this folder:
 
 ```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ollama pull nomic-embed-text:latest
 ollama pull llama3.1:8b
@@ -54,9 +56,9 @@ length. All source PDFs are indexed; the index refreshes when their text changes
 ## Use
 
 ```powershell
-python simple_rag.py --index
-python simple_rag.py --ask "What does WHO say about isolation of suspected cases?"
-streamlit run app.py
+.\.venv\Scripts\python.exe simple_rag.py --index
+.\.venv\Scripts\python.exe simple_rag.py --ask "What does WHO say about isolation of suspected cases?"
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
 Use `--source` to choose a directory of PDFs or one local PDF, `--model` for another installed chat
