@@ -207,6 +207,19 @@ def verify_claim_support(
         if animal_origin_claim and not animal_origin_quote:
             issues.append(f"Claim {line_number} does not have direct source wording for its animal-origin detail.")
             continue
+        screening_context = re.search(
+            r"\bhealth and care workers conducting screening\b|\bscreening activities\b",
+            passage,
+            re.I,
+        )
+        claim_names_screening_scope = re.search(
+            r"\bscreening\b|\bscreeners?\b|\bhealth and care workers\b",
+            claim,
+            re.I,
+        )
+        if screening_context and not claim_names_screening_scope:
+            issues.append(f"Claim {line_number} omits the source's healthcare screening context.")
+            continue
         verified_lines.append(line)
 
     return "\n".join(verified_lines) if verified_lines else REFUSAL, issues
