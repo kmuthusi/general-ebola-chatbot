@@ -1,4 +1,4 @@
-"""Streamlit interface for the WHO Ebola Guidance Assistant."""
+"""Streamlit interface for the Ebola Guidance Assistant."""
 
 import os
 import time
@@ -45,7 +45,7 @@ def start_model_warmup(chat_model: str, embed_model: str, source_path: str) -> F
     return future
 
 
-st.set_page_config(page_title="WHO Ebola Guidance Assistant")
+st.set_page_config(page_title="Ebola Guidance Assistant")
 st.markdown(
     """
     <style>
@@ -66,9 +66,9 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.title("WHO Ebola Guidance Assistant")
+st.title("Ebola Guidance Assistant")
 st.info(
-    "Ask questions about WHO guidance on Ebola and Marburg disease. "
+    "Ask questions about WHO and CDC documents on Ebola and Marburg disease. "
     "Answers cite the source document and PDF page, so you can check the guidance."
 )
 st.caption(
@@ -86,12 +86,12 @@ warmup = start_model_warmup(model, embed_model, source_path)
 @st.fragment(run_every="5s")
 def show_warmup_status() -> None:
     if not warmup.done():
-        st.caption("Preparing the WHO guidelines...")
+        st.caption("Preparing the guidance documents...")
         return
     try:
         warmup.result()
     except Exception:
-        st.warning("The WHO guidelines assistant is temporarily unavailable.")
+        st.warning("The Ebola guidance assistant is temporarily unavailable.")
         if st.button("Try again"):
             start_model_warmup.clear()
             st.rerun()
@@ -114,8 +114,10 @@ def show_sources(chunks: list[dict]) -> None:
                 st.write(text)
 
 
-if "messages" not in st.session_state:
+CHAT_PIPELINE_VERSION = 3
+if st.session_state.get("chat_pipeline_version") != CHAT_PIPELINE_VERSION:
     st.session_state.messages = []
+    st.session_state.chat_pipeline_version = CHAT_PIPELINE_VERSION
 
 if st.session_state.messages and st.button("New chat", type="tertiary"):
     st.session_state.messages = []
@@ -123,10 +125,10 @@ if st.session_state.messages and st.button("New chat", type="tertiary"):
 
 if not st.session_state.messages:
     with st.chat_message("assistant"):
-        st.markdown("Hello! Ask about the WHO documents on Ebola and Marburg care, IPC, diagnostics, therapeutics, or outbreak criteria.")
+        st.markdown("Hello! Ask about the WHO and CDC documents on Ebola and Marburg, including transmission, diagnostics, care, or outbreaks.")
 
 UNVERIFIED_FALLBACK = (
-    "I couldn't verify an answer in the WHO guidelines. "
+    "I couldn't verify an answer in the supplied guidance documents. "
     "Please try rephrasing or ask about a specific topic."
 )
 
@@ -137,11 +139,9 @@ for message in st.session_state.messages:
         if unverified:
             st.warning("The generated answer was hidden because it could not be verified.")
         else:
-            if message.get("warnings"):
-                st.warning("Some claims were omitted because their cited passages could not be confirmed.")
             show_sources(message.get("chunks", []))
 
-if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
+if question := st.chat_input("Ask about the guidance documents", max_chars=500):
     earlier_questions = tuple(
         message["content"]
         for message in st.session_state.messages
@@ -161,14 +161,14 @@ if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
                           "chunks": [], "issues": []}
             else:
                 try:
-                    with st.spinner("Checking the WHO guidelines..."):
+                    with st.spinner("Checking the guidance documents..."):
                         warmup.result(timeout=180)
                         result = SimpleAssistantRAG(source_path, model).ask(
                             SimpleAssistantRequest(question, top_k, model, earlier_questions)
                         )
                 except Exception:
                     LOGGER.exception("Guidelines question failed")
-                    result = {"answer": "The WHO guidelines assistant is temporarily unavailable. "
+                    result = {"answer": "The Ebola guidance assistant is temporarily unavailable. "
                               "Please try again later.", "chunks": [], "issues": []}
                 finally:
                     slots.release()
@@ -178,12 +178,9 @@ if question := st.chat_input("Ask about the WHO guidelines", max_chars=500):
         if unverified:
             st.warning("The generated answer was hidden because it could not be verified.")
         else:
-            if result.get("warnings"):
-                st.warning("Some claims were omitted because their cited passages could not be confirmed.")
             show_sources(result["chunks"])
     st.session_state.messages.append(
         {"role": "assistant", "content": answer,
-         "chunks": [] if unverified else result["chunks"], "issues": result.get("issues", []),
-         "warnings": result.get("warnings", [])}
+         "chunks": [] if unverified else result["chunks"], "issues": result.get("issues", [])}
     )
     st.session_state.messages = st.session_state.messages[-20:]

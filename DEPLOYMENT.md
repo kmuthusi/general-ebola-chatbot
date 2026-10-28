@@ -78,8 +78,9 @@ it again so the indexer rebuilds before the app serves requests.
   in-app generations; extra users receive a busy message.
 - Avoid collecting patient names, contact details or medical records. Review
   proxy and application logs for accidental question or answer retention.
-- Keep the review process active when WHO guidance changes. All PDFs in
-  `who_guidelines/` are indexed by this assistant.
+- Keep the review process active when WHO guidance changes. The assistant
+  indexes top-level PDFs in who_guidelines/; PDFs in its archive/ subfolder
+  are retained for reference and excluded from indexing.
 - Pin the exact container image digests and Python dependency set used for a
   release, and rebuild after security updates. The supplied Compose file uses
   the current official Ollama image tag as a starting point.

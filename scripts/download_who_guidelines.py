@@ -1,10 +1,10 @@
-"""Download the WHO documents cited in the project source list."""
+"""Download active 2026 WHO and CDC PDFs; archived references are not indexed."""
 
 import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 from urllib.request import Request, urlopen
 
 
@@ -12,13 +12,11 @@ DESTINATION = Path(__file__).resolve().parents[1] / "who_guidelines"
 DOCUMENTS = {
     "clinical-management-filovirus-2026.pdf": "https://www.who.int/publications/i/item/B09774",
     "clinical-management-filovirus-executive-summary-2026.pdf": "https://www.who.int/publications/i/item/B09786",
-    "optimized-supportive-care-ebola-2019.pdf": "https://www.who.int/publications-detail-redirect/9789241515894",
-    "therapeutics-ebola-2022.pdf": "https://www.who.int/publications/i/item/9789240055742",
     "ipc-ebola-marburg-2026.pdf": "https://iris.who.int/server/api/core/bitstreams/018890fc-eb18-469d-b295-96ca77b99b34/content",
     "diagnostic-testing-ebola-marburg-2026.pdf": "https://www.who.int/publications/i/item/B09834",
-    "mab114-poster-2022.pdf": "https://www.who.int/publications/i/item/WHO-EVD-therapeutics-mAb114-Poster_A-2022.1",
-    "regn-eb3-poster-2022.pdf": "https://www.who.int/publications/i/item/WHO-EVD-therapeutics-REGN-EB3-Poster_A-2022.1",
-    "end-of-ebola-outbreak-criteria-2020.pdf": "https://www.who.int/publications/m/item/who-recommended-criteria-for-declaring-the-end-of-the-ebola-virus-disease-outbreak",
+    "who-bundibugyo-risk-assessment-drc-v4-2026.pdf": "https://cdn.who.int/media/docs/default-source/_sage-2026/web_20260814_ebola-bundibugyo-virus-disease--democratic-republic-of-the-congo_v4.pdf?download=true&sfvrsn=b0081e9d_3",
+    "who-bundibugyo-public-health-advice-camp-settings-2026.pdf": "https://www.who.int/publications/i/item/B09887",
+    "cdc-mmwr-bundibugyo-outbreak-august-2026.pdf": "https://www.cdc.gov/mmwr/volumes/75/wr/pdfs/mm7535e1-H.pdf",
 }
 
 
@@ -51,7 +49,8 @@ def fetch(url):
 
 
 def pdf_url(publication_url):
-    if publication_url.lower().endswith(".pdf") or "/bitstreams/" in publication_url:
+    path = urlsplit(publication_url).path.lower()
+    if path.endswith(".pdf") or "/bitstreams/" in path:
         return publication_url
     page, resolved = fetch(publication_url)
     parser = LinkParser()

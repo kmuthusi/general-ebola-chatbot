@@ -2,17 +2,16 @@
 
 import hashlib
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from config import CHUNK_OVERLAP, CHUNK_SIZE, OLLAMA_EMBED_MODEL, OLLAMA_KEEP_ALIVE
+
 import chromadb
 import ollama
-from dotenv import load_dotenv
 
-load_dotenv()
-DEFAULT_EMBED_MODEL = "nomic-embed-text:latest"
-EMBED_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")
+DEFAULT_EMBED_MODEL = OLLAMA_EMBED_MODEL
+EMBED_KEEP_ALIVE = OLLAMA_KEEP_ALIVE
 
 
 def _hash_manifest(items: List[Dict[str, Any]]) -> str:
@@ -35,9 +34,7 @@ class VectorStore:
         self.collection_name = collection_name
         self.chroma_dir = Path(chroma_dir)
         self.chroma_dir.mkdir(parents=True, exist_ok=True)
-        self.embed_model = embed_model or os.getenv(
-            "OLLAMA_EMBED_MODEL", DEFAULT_EMBED_MODEL
-        )
+        self.embed_model = embed_model or DEFAULT_EMBED_MODEL
         self.client = chromadb.PersistentClient(path=str(self.chroma_dir))
         self.collection = self.client.get_or_create_collection(collection_name)
         self.manifest_path = self.chroma_dir / f"{collection_name}.manifest.json"
@@ -54,7 +51,9 @@ class VectorStore:
             except (OSError, json.JSONDecodeError):
                 self._manifest_hash = None
 
-    def _chunk_text(self, text: str, chunk_len: int = 1200, overlap: int = 200) -> List[str]:
+    def _chunk_text(
+        self, text: str, chunk_len: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP
+    ) -> List[str]:
         if chunk_len <= 0 or overlap < 0 or overlap >= chunk_len:
             raise ValueError("chunk_len must be positive and overlap must be smaller than chunk_len")
         chunks = []

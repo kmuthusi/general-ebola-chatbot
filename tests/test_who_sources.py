@@ -20,7 +20,7 @@ def test_all_who_pdfs_are_read_with_distinct_sources():
 
 
 def test_empty_directory_fails_clearly(tmp_path):
-    with pytest.raises(FileNotFoundError, match="No WHO guidelines"):
+    with pytest.raises(FileNotFoundError, match="No Ebola guidance PDFs"):
         GuidelineRetriever(str(tmp_path)).read_and_chunk()
 
 
@@ -55,10 +55,44 @@ def test_orchestrator_uses_document_aware_retrieval(monkeypatch):
     monkeypatch.setattr(simple_rag, "VectorStore", FakeStore)
     monkeypatch.setattr(GuidelineRetriever, "read_and_chunk", lambda self: [evidence])
     monkeypatch.setattr(simple_rag, "compose_answer", lambda *args:
-                        "See IPC guidance (ipc-ebola-marburg-2026.pdf, PDF Page 12).")
+                        '- WHO IPC guidance includes relevant isolation information '
+                        '(ipc-ebola-marburg-2026.pdf, PDF Page 12).')
     result = SimpleAssistantRAG("who_guidelines").ask(SimpleAssistantRequest("What is IPC guidance?"))
     assert result["issues"] == []
+    assert "WHO IPC guidance" in result["answer"]
     assert result["chunks"][0]["source"] == evidence["source"]
+
+
+def test_transmission_question_uses_curated_who_pages_and_blocks_airborne_misreading(monkeypatch):
+    pages = [
+        {"source": "ipc-ebola-marburg-2026.pdf", "page": 11,
+         "text": "Ebola disease glossary entry."},
+        {"source": "ipc-ebola-marburg-2026.pdf", "page": 35,
+         "text": "No natural airborne transmission statement."},
+    ]
+
+    class FakeStore:
+        def __init__(self, **kwargs):
+            pass
+
+        def ensure_index(self, indexed_pages):
+            assert indexed_pages == pages
+
+        def query(self, *args, **kwargs):
+            pytest.fail("Curated transmission answer should not use generic retrieval")
+
+    monkeypatch.setattr(simple_rag, "VectorStore", FakeStore)
+    monkeypatch.setattr(GuidelineRetriever, "read_and_chunk", lambda self: pages)
+    monkeypatch.setattr(simple_rag, "compose_answer", lambda *args:
+                        pytest.fail("Curated transmission answer should not call the model"))
+
+    result = SimpleAssistantRAG("who_guidelines").ask(
+        SimpleAssistantRequest("How is Ebola spread?")
+    )
+    assert result["issues"] == []
+    assert "does not naturally occur via airborne or respiratory-droplet routes" in result["answer"]
+    assert "ipc-ebola-marburg-2026.pdf, PDF Page 35" in result["answer"]
+    assert len(result["chunks"]) == 2
 
 
 def test_bibliography_filter_uses_each_document_page_range():

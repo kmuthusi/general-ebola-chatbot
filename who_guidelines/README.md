@@ -1,25 +1,31 @@
-# WHO Ebola and filovirus reference documents
+# WHO and CDC Ebola reference documents
 
-Downloaded from official WHO publication pages on 27 October 2026. These are
-reference copies. The chatbot indexes every PDF in this directory; adding or
-changing a PDF triggers a refresh of the local index.
+The assistant indexes only the active 2026 PDFs stored directly in this folder.
+Files under archive/ are retained for historical or virus-specific reference
+and are not downloaded by the active-source workflow or included in ChromaDB.
 
-| Local file | WHO source | Type |
+## Active sources
+
+| Local file | Official source | Type |
 | --- | --- | --- |
-| [clinical-management-filovirus-2026.pdf](clinical-management-filovirus-2026.pdf) | [Clinical management of filovirus disease](https://www.who.int/publications/i/item/B09774) | Guidelines |
-| [clinical-management-filovirus-executive-summary-2026.pdf](clinical-management-filovirus-executive-summary-2026.pdf) | [Executive summary](https://www.who.int/publications/i/item/B09786) | Summary of guidelines |
-| [optimized-supportive-care-ebola-2019.pdf](optimized-supportive-care-ebola-2019.pdf) | [Optimized supportive care](https://www.who.int/publications-detail-redirect/9789241515894) | Clinical procedures |
-| [therapeutics-ebola-2022.pdf](therapeutics-ebola-2022.pdf) | [Therapeutics for Ebola virus disease](https://www.who.int/publications/i/item/9789240055742) | Guidelines |
-| [ipc-ebola-marburg-2026.pdf](ipc-ebola-marburg-2026.pdf) | [Infection prevention and control](https://www.who.int/publications/i/item/9789240111332) | Guidelines |
-| [diagnostic-testing-ebola-marburg-2026.pdf](diagnostic-testing-ebola-marburg-2026.pdf) | [Diagnostic testing](https://www.who.int/publications/i/item/B09834) | Interim guidance |
-| [mab114-poster-2022.pdf](mab114-poster-2022.pdf) | [mAb114 poster](https://www.who.int/publications/i/item/WHO-EVD-therapeutics-mAb114-Poster_A-2022.1) | Treatment toolkit |
-| [regn-eb3-poster-2022.pdf](regn-eb3-poster-2022.pdf) | [REGN-EB3 poster](https://www.who.int/publications/i/item/WHO-EVD-therapeutics-REGN-EB3-Poster_A-2022.1) | Treatment toolkit |
-| [end-of-ebola-outbreak-criteria-2020.pdf](end-of-ebola-outbreak-criteria-2020.pdf) | [End-of-outbreak criteria](https://www.who.int/publications/m/item/who-recommended-criteria-for-declaring-the-end-of-the-ebola-virus-disease-outbreak) | Technical note |
+| [clinical-management-filovirus-2026.pdf](clinical-management-filovirus-2026.pdf) | [WHO clinical management](https://www.who.int/publications/i/item/B09774) | Guideline |
+| [clinical-management-filovirus-executive-summary-2026.pdf](clinical-management-filovirus-executive-summary-2026.pdf) | [WHO executive summary](https://www.who.int/publications/i/item/B09786) | Guideline summary |
+| [diagnostic-testing-ebola-marburg-2026.pdf](diagnostic-testing-ebola-marburg-2026.pdf) | [WHO diagnostic testing](https://www.who.int/publications/i/item/B09834) | Interim guidance |
+| [ipc-ebola-marburg-2026.pdf](ipc-ebola-marburg-2026.pdf) | [WHO infection prevention and control](https://www.who.int/publications/i/item/9789240111332) | Guideline |
+| [who-bundibugyo-risk-assessment-drc-v4-2026.pdf](who-bundibugyo-risk-assessment-drc-v4-2026.pdf) | [WHO Bundibugyo risk assessment v4](https://www.who.int/publications/m/item/who-rapid-risk-assessment-ebola-disease-caused-by-bundibugyo-virus--democratic-republic-of-the-congo-v4) | Outbreak risk assessment |
+| [who-bundibugyo-public-health-advice-camp-settings-2026.pdf](who-bundibugyo-public-health-advice-camp-settings-2026.pdf) | [WHO advice for camp settings](https://www.who.int/publications/i/item/B09887) | Public health advice |
+| [cdc-mmwr-bundibugyo-outbreak-august-2026.pdf](cdc-mmwr-bundibugyo-outbreak-august-2026.pdf) | [CDC MMWR outbreak report](https://www.cdc.gov/mmwr/volumes/75/wr/mm7535e1.htm) | Outbreak report |
 
-The [WHO Ebola disease fact sheet](https://www.who.int/news-room/fact-sheets/detail/ebola-disease)
-is a web page rather than a downloadable set of guidelines. It remains linked here for
-reference. The CDC, JAMA and NCBI links in the request are external references,
-not WHO guidelines.
+## Archived references
 
-Run `python scripts/download_who_guidelines.py` from the repository root to
-download missing PDFs again. Existing files with a PDF signature are skipped.
+| Local file | Source | Scope / reason archived |
+| --- | --- | --- |
+| [optimized-supportive-care-ebola-2019.pdf](archive/optimized-supportive-care-ebola-2019.pdf) | [WHO](https://www.who.int/publications-detail-redirect/9789241515894) | Older operational SOP; consult the 2026 filovirus clinical guideline first |
+| [therapeutics-ebola-2022.pdf](archive/therapeutics-ebola-2022.pdf) | [WHO](https://www.who.int/publications/i/item/9789240055742) | Therapeutics recommendations are specific to Zaire ebolavirus |
+| [mab114-poster-2022.pdf](archive/mab114-poster-2022.pdf) | [WHO](https://www.who.int/publications/i/item/WHO-EVD-therapeutics-mAb114-Poster_A-2022.1) | Treatment toolkit for Zaire ebolavirus disease |
+| [regn-eb3-poster-2022.pdf](archive/regn-eb3-poster-2022.pdf) | [WHO](https://www.who.int/publications/i/item/WHO-EVD-therapeutics-REGN-EB3-Poster_A-2022.1) | Treatment toolkit for Zaire ebolavirus disease |
+| [end-of-ebola-outbreak-criteria-2020.pdf](archive/end-of-ebola-outbreak-criteria-2020.pdf) | [WHO](https://www.who.int/publications/m/item/who-recommended-criteria-for-declaring-the-end-of-the-ebola-virus-disease-outbreak) | Dated technical note; verify applicability to the virus and outbreak |
+
+The active PDFs are downloaded from official sources. Outbreak assessments and
+reports are time-specific snapshots; consult the latest WHO or CDC update before
+using current case counts or risk ratings.

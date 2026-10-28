@@ -5,3 +5,6 @@ chroma_db/
 __pycache__/
 *.pyc
 *.pdf
+!who_guidelines/who-bundibugyo-risk-assessment-drc-v4-2026.pdf
+!who_guidelines/who-bundibugyo-public-health-advice-camp-settings-2026.pdf
+!who_guidelines/cdc-mmwr-bundibugyo-outbreak-august-2026.pdf

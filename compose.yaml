@@ -33,6 +33,7 @@ services:
     environment:
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text:latest}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
     volumes:
       - type: bind
         source: ${GUIDELINE_SOURCE_DIR:-./who_guidelines}

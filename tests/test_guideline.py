@@ -69,4 +69,4 @@ def test_empty_question_is_rejected(monkeypatch):
 
 
 def test_refusal_remains_available():
-    assert "WHO documents" in REFUSAL
+    assert "Ebola documents" in REFUSAL

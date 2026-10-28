@@ -1,7 +1,6 @@
-"""CLI and shared orchestration for the WHO guidelines assistant."""
+"""CLI and shared orchestration for the Ebola guidance assistant."""
 
 import argparse
-import os
 import sys
 import time
 from dataclasses import dataclass
@@ -10,18 +9,17 @@ from bounded_composer import (
     REFUSAL,
     compose_answer,
     normalize_generated_text,
-    repair_citations,
-    verify_claim_support,
 )
+from config import OLLAMA_CHAT_MODEL
 from conversation import clarification_for, contextualize_question
 from public_safety import CARE_REDIRECT, requires_professional_care
-from rag_pipeline import exclude_bibliography, rerank_and_release
+from rag_pipeline import exclude_bibliography, rerank_and_release, transmission_answer
 from retrievers import DEFAULT_SOURCE, GuidelineRetriever
 from vector_store import VectorStore
-from verifier import CITATION_RE, filter_verified_format
+from verifier import CITATION_RE, verify_answer
 
 
-DEFAULT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.1:8b")
+DEFAULT_MODEL = OLLAMA_CHAT_MODEL
 
 
 @dataclass
@@ -53,14 +51,22 @@ class SimpleAssistantRAG:
             return {"answer": clarification, "issues": [], "chunks": [],
                     "elapsed_seconds": round(time.perf_counter() - started, 2)}
         search_question = contextualize_question(request.question, request.earlier_questions)
+        top_k = max(1, min(10, request.top_k))
         pages = self.retriever.read_and_chunk()
         self.store.ensure_index(pages)
-        candidates = self.store.query(
-            search_question, k=max(20, request.top_k * 4), include_scores=True
-        )
+        transmission = transmission_answer(search_question, pages)
+        if transmission:
+            verified = verify_answer(transmission["answer"], transmission["chunks"])
+            return {
+                "answer": verified["verified_answer"],
+                "issues": verified["issues"],
+                "chunks": transmission["chunks"] if not verified["issues"] else [],
+                "elapsed_seconds": round(time.perf_counter() - started, 2),
+            }
+        candidates = self.store.query(search_question, k=top_k, include_scores=True)
         candidates = exclude_bibliography(search_question, candidates, pages)
         selected = rerank_and_release(
-            search_question, candidates, intent="guideline", limit=request.top_k
+            search_question, candidates, intent="guideline", limit=top_k
         )
         evidence = selected["evidence"]
         if selected["release"] == "refusal":
@@ -69,20 +75,9 @@ class SimpleAssistantRAG:
         answer = normalize_generated_text(
             compose_answer(search_question, evidence, request.ollama_model)
         )
-        checked = filter_verified_format(answer, evidence)
-        if checked["verified_answer"] == REFUSAL and checked["issues"]:
-            answer = normalize_generated_text(
-                repair_citations(search_question, answer, evidence, request.ollama_model)
-            )
-            checked = filter_verified_format(answer, evidence)
-        issues = list(checked["issues"])
-        final_answer = checked["verified_answer"]
-        if final_answer != REFUSAL:
-            final_answer, support_issues = verify_claim_support(
-                checked["verified_answer"], evidence, request.ollama_model
-            )
-            issues.extend(support_issues)
-        partial = bool(issues) and final_answer != REFUSAL
+        verified = verify_answer(answer, evidence)
+        final_answer = verified["verified_answer"]
+        issues = verified["issues"]
         citations = {
             (source.lower(), int(page)) for source, page in CITATION_RE.findall(final_answer)
         }
@@ -90,18 +85,17 @@ class SimpleAssistantRAG:
             item for item in evidence
             if (item["source"].lower(), item["page"]) in citations
         ]
-        return {"answer": final_answer, "issues": [] if partial else issues,
-                "warnings": ["Some claims were omitted because their cited passages could not be confirmed."] if partial else [],
+        return {"answer": final_answer, "issues": issues,
                 "chunks": verified_evidence, "elapsed_seconds": round(time.perf_counter() - started, 2)}
 
 
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    parser = argparse.ArgumentParser(description="WHO Ebola Guidelines Assistant")
+    parser = argparse.ArgumentParser(description="Ebola Guidance Assistant")
     parser.add_argument("--source", default=DEFAULT_SOURCE, help="Directory of WHO PDFs or one PDF")
     parser.add_argument("--index", action="store_true", help="Build or refresh the local index")
-    parser.add_argument("--ask", help="Ask a question about the WHO documents")
+    parser.add_argument("--ask", help="Ask a question about the loaded guidance documents")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Installed Ollama chat model")
     parser.add_argument("--topk", type=int, default=5, help="Number of evidence passages")
     args = parser.parse_args()

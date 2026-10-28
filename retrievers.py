@@ -25,13 +25,14 @@ class GuidelineRetriever:
 
     def read_and_chunk(self) -> list[dict]:
         if self.source_path.is_dir():
+            # Intentionally non-recursive: PDFs in archive/ are retained but not indexed.
             paths = sorted(self.source_path.glob("*.pdf"))
         elif self.source_path.is_file() and self.source_path.suffix.lower() == ".pdf":
             paths = [self.source_path]
         else:
             paths = []
         if not paths:
-            raise FileNotFoundError(f"No WHO guidelines were found in: {self.source_path}")
+            raise FileNotFoundError(f"No Ebola guidance PDFs were found in: {self.source_path}")
         pages = []
         for file in paths:
             path = file.resolve()
